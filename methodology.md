@@ -2,11 +2,17 @@
 
 ## Summary
 
-For each income year 2018–2024, load the Census CPS ASEC public-use person file. Filter to one row per SPM family unit (`SPM_HEAD == 1`). Compute each unit's adequacy ratio (`SPM_Resources / SPM_PovThreshold`), where `SPM_Resources` is post-tax, post-transfer, post-expense comprehensive family resources and `SPM_PovThreshold` is the unit's BLS-derived poverty threshold adjusted for family size and local housing costs. Sort units by adequacy ratio ascending and compute the exact weighted 20th, 50th, and 80th percentile using `SPM_Weight` as the unit weight. The result is three annual figures — P20, P50, P80 — each expressing how well a family at that position in the national well-being distribution covers its own needs, where 1.0 = exactly at the poverty line.
+- **Data:** Census CPS ASEC public-use person file, income years 2018–2024, downloaded directly from Census.gov
+- **Unit of analysis:** SPM family unit — one row per unit, obtained by filtering to `SPM_HEAD == 1`
+- **Key variable:** Adequacy ratio = `SPM_Resources / SPM_PovThreshold`
+  - `SPM_Resources`: post-tax, post-transfer, post-expense comprehensive family resources (cash income + in-kind benefits + refundable tax credits − taxes − work/childcare expenses − medical out-of-pocket)
+  - `SPM_PovThreshold`: BLS-derived poverty threshold, pre-adjusted for family size and local housing costs; provided directly in the data file
+- **Ranking:** All units sorted ascending by adequacy ratio (worst-off to best-off)
+- **Weighting:** `SPM_Weight` used as unit weight throughout (stored ×100 in raw files; divided internally before summing)
+- **Output:** Exact weighted 20th, 50th, and 80th percentile of the adequacy distribution — three values per year, 2018–2024
+- **Interpretation:** Ratio of 1.0 = resources exactly equal the unit's poverty threshold; ratio of 2.0 = twice the resources needed; below 1.0 = in SPM poverty
 
 A full overview of methodology, data sources, limitations, and forward-looking considerations follows below.
-
-**Coverage note:** The active series uses CPS ASEC microdata only (income years 2018–2024), which ensures a consistent survey methodology across all years. ACS-based SPM research extracts exist for 2010–2017 and the full pipeline for those years is preserved in `03_batch_run.R` and `05_summary_stats.R` (set `YEARS_TO_RUN <- 2010:2024` to re-enable), but they are excluded from published outputs due to the ACS/CPS ASEC structural break. IPUMS CPS may provide consistent CPS ASEC-based SPM data back to 2010 and is a candidate for future extension.
 
 ---
 
@@ -14,19 +20,9 @@ A full overview of methodology, data sources, limitations, and forward-looking c
 
 ### Data source
 
-Two file series cover the full 2010–2024 range:
+**CPS ASEC (income years 2018–2024):** Main CPS ASEC person file CSV zips from the Census CPS datasets page. These are **CPS ASEC-based** (~58,000–72,000 SPM family units per year). SPM variables are embedded directly in the main person file.
 
-**Series A (reference years 2010–2017):** SPM research extract `.dta` files published by the Census Bureau at the SPM datasets page. These are **ACS-based** (American Community Survey), person-level files with ~1.2–1.3 million rows per year. Unlike the CPS ASEC series, they have large samples (~1.3M SPM units) but use ACS income reference conventions. All SPM variables needed for this analysis are present in these files.
-
-**Series B (reference years 2018–2024):** Main CPS ASEC person file CSV zips from the Census CPS datasets page. These are **CPS ASEC-based** (~58,000–72,000 SPM units per year). SPM variables are embedded directly in the main person file from survey year 2019 onward.
-
-The two series use the same SPM variable definitions and produce consistent adequacy ratio estimates at weighted percentiles. The key structural differences are:
-- Sample size: ~1.3M (Series A) vs ~60K (Series B)
-- Weight scale: Series A weights sum to ~125–130M (direct unit count); Series B weights are stored ×100 (sum to ~13B; divide by 100 to get ~130M population count)
-- Unit identification: Series A has no `SPM_Head` column — deduplicate by `SPM_ID` (first record per unit, sorted by `sporder`) to get unit-level rows. Series B uses `SPM_Head == 1` directly.
-- Series A weight column is named `wt`; normalized to `SPM_Weight` by `normalize_spm_colnames()`.
-
-**Income reference period:** CPS ASEC asks about income in the **prior calendar year**, giving a clean annual reference. Series A (ACS-based) also reports on prior-year income.
+**Income reference period:** CPS ASEC asks about income in the **prior calendar year**, so the survey conducted in March 2025 covers income year 2024.
 
 **Most recent data:** 2025 CPS ASEC covering income year 2024 (released September 2025).
 
@@ -34,11 +30,9 @@ The two series use the same SPM variable definitions and produce consistent adeq
 
 ### Step 1: Collapse to SPM unit level
 
-**Series B:** Filter to `SPM_Head == 1`. SPM variables are stored on every person record; keeping only the head gives one row per SPM unit. Validate with `uniqueN(SPM_ID) == nrow(dt)` after filtering.
+Filter to `SPM_HEAD == 1`. SPM variables are stored on every person record in the file; keeping only the reference person (head) gives one row per SPM family unit.
 
-**Series A:** No `SPM_Head` column. Deduplicate by `SPM_ID`, keeping the first record per unit sorted by `sporder`. This is equivalent to selecting the head of each unit.
-
-Use `SPM_Weight` (normalized from `wt` for Series A) as the unit weight throughout.
+Use `SPM_Weight` as the unit weight throughout. Weights are stored ×100 in the raw file (a Census convention); coerce to numeric and divide by 100 where needed for population counts.
 
 ---
 
@@ -64,11 +58,11 @@ Drop records with `SPM_PovThreshold <= 0` before computing.
 
 ### Step 3: Exact weighted percentiles
 
-Sort units by `adequacy` (ascending). Compute the weighted cumulative distribution using `SPM_Weight` (coerced to numeric/double before `cumsum()` to avoid 32-bit integer overflow — total weights sum to ~13B for Series B).
+Sort units by `adequacy` (ascending). Compute the weighted cumulative distribution using `SPM_Weight` (coerced to numeric/double before `cumsum()` to avoid 32-bit integer overflow — total weights sum to ~13B for CPS ASEC files).
 
 For each target percentile p ∈ {0.20, 0.50, 0.80}, the reported value is the first `adequacy` value where the cumulative weight meets or exceeds `p × total_weight` (standard type-1 weighted quantile / lower).
 
-No percentile bands are used. With ~60,000 SPM units (Series B) and ~1.3M units (Series A), exact weighted percentiles at P20/P50/P80 are stable.
+No percentile bands are used. With ~60,000 SPM units, exact weighted percentiles at P20/P50/P80 are stable.
 
 ---
 
@@ -124,15 +118,11 @@ The geographic adjustment is at the metro-area level and does not capture within
 
 CPS ASEC is cross-sectional. The percentile adequacy ratios reflect the current composition of units at each position, not the trajectory of the same units over time. If AI displaces middle-skill workers who slide down the distribution, the P50 ratio may remain stable even as displaced workers are now worse off.
 
-### 4.7 Series A / Series B structural break (2017→2018)
-
-Series A (2010–2017) is ACS-based with ~1.3M sample units per year. Series B (2018–2024) is CPS ASEC-based with ~60K units. The weighted adequacy percentiles are consistent across the break (both use the same SPM variable definitions and nationally representative weights), but sample sizes differ by a factor of ~20. Any uncertainty bands would be much tighter for Series A years. The break also coincides with the 2018 pre-COVID improvement in adequacy ratios, so care is needed in attributing trends.
-
-### 4.8 SPM methodology changes over time
+### 4.7 SPM methodology changes over time
 
 The series has undergone structural changes: broadband subsidies added in 2021 (CPS ASEC SPM only), MOOP imputation changes, the 3→5 year CE window change in 2020 thresholds, and the 2014 CPS ASEC questionnaire redesign affecting high-income respondents. All are annotated in the output.
 
-### 4.9 AI impact attribution
+### 4.8 AI impact attribution
 
 The ratio will move with productivity growth, policy changes, inflation, demographic shifts, and sector-specific labor market changes. Isolating the AI effect from these confounders is not possible from this measure alone.
 
@@ -140,18 +130,16 @@ The ratio will move with productivity growth, policy changes, inflation, demogra
 
 ## 5. Historical Reach and Structural Breaks
 
-**Full series: income years 2010–2024** (15 years).
+**Active series: income years 2018–2024** (7 years).
 
 | Income year(s) | Note |
 |---|---|
-| 2010–2012 | Early SPM methodology; treat with more caution |
-| 2014–2015 | CPS ASEC questionnaire redesign; may affect P80 level |
-| 2017→2018 | Series break: ACS-based (Series A) to CPS ASEC-based (Series B) |
 | 2020 | COVID field limitations (telephone-only interviews) |
-| 2021 | ARPA policy spike (expanded CTC, stimulus, enhanced UI) — do not use as baseline |
-| 2019 or 2023 | Recommended baseline years: 2019 = pre-COVID, 2023 = post-ARPA reversion |
+| 2021 | ARPA policy spike (expanded CTC, stimulus, enhanced UI) |
 
-**Pre-2010:** SPM was not published before the 2011 CPS ASEC. The Wimer et al. historical SPM series provides pre-2010 estimates using a different methodology; do not concatenate without explicit bridging.
+**Pre-2018:** CPS ASEC files with embedded SPM variables are not publicly available before the 2019 survey (income year 2018). See the appendix below for notes on the ACS-based extension to 2010–2017.
+
+**Pre-2010:** The SPM was not published before the 2011 CPS ASEC. The Wimer et al. historical SPM series provides pre-2010 estimates using a different methodology; do not concatenate without explicit bridging.
 
 ---
 
@@ -168,8 +156,7 @@ The ratio will move with productivity growth, policy changes, inflation, demogra
 1. Policy is endogenous — government transfers partially offset labor market shocks.
 2. The threshold rises with real consumption growth — maintaining the ratio requires resource growth above FCSU inflation.
 3. FCSU basket scope limitations become more binding at longer horizons if AI changes the nature of minimum necessities.
-4. The 2021 ARPA spike makes it a poor baseline; use 2019 (pre-COVID) or 2023 (post-ARPA reversion) as anchors.
-5. The Series A→B break at 2018 should be noted when describing any trend from 2017→2018.
+4. The 2021 ARPA spike makes it a poor baseline.
 
 ---
 
@@ -184,3 +171,43 @@ The ratio will move with productivity growth, policy changes, inflation, demogra
 | BLS SPM thresholds | https://www.bls.gov/pir/spmhome.htm |
 | BLS 2024 thresholds | https://www.bls.gov/pir/spm/spm_thresholds_2024.htm |
 | BLS 2019 methodology changes | https://www.bls.gov/pir/spm/spm_2019re_changes.htm |
+
+---
+
+## Appendix: ACS-Based Extension to 2010–2017 (Inactive)
+
+The pipeline scripts contain fully functional code for computing the same adequacy ratio percentiles using Census **ACS-based SPM research extracts** for income years 2010–2017. This code is not disabled or commented out — it is active but gated by a year range parameter. The published outputs include only 2018–2024 (CPS ASEC) because mixing the two surveys creates a methodological break that complicates interpretation.
+
+### How to re-enable
+
+In both `03_batch_run.R` and `05_summary_stats.R`, change:
+
+```r
+YEARS_TO_RUN <- 2018:2024
+```
+
+to:
+
+```r
+YEARS_TO_RUN <- 2010:2024
+```
+
+The scripts handle both file series automatically based on year: years ≤ 2017 trigger the ACS path, years ≥ 2018 trigger the CPS ASEC path.
+
+### How the ACS computation differs
+
+The same three-step methodology applies (collapse to unit → compute adequacy → exact weighted percentile), but the data loading differs:
+
+- **File format:** `.dta` (Stata) files read via the `haven` package, rather than CSV zips
+- **File source:** Census SPM datasets page (`census.gov/topics/income-poverty/supplemental-poverty-measure/data/datasets.html`), not the CPS ASEC page
+- **Unit identification:** No `SPM_Head` column exists in ACS files. Units are deduplicated by taking the first record per `SPM_ID` after sorting by `sporder` — equivalent to selecting the reference person
+- **Weight column:** Named `wt` in ACS files (not `SPM_Weight`); normalized by `normalize_spm_colnames()` before processing
+- **Weight scale:** ACS weights sum directly to ~125–130M (the estimated US SPM unit population); no ×100 division needed
+- **Sample size:** ~1.2–1.3 million SPM unit rows per year, versus ~60,000 for CPS ASEC
+
+### Methodological caveats for the ACS series
+
+- **Different survey:** The ACS is a much larger survey (~3M households/year) but uses different income collection instruments than the CPS ASEC. The SPM variables are computed from ACS-reported income, which differs in coverage and reference period from CPS ASEC income.
+- **Not the official SPM:** The Census Bureau's official annual SPM report is based on CPS ASEC. The ACS-based SPM extracts are a research product intended for sub-national estimation, not for replicating the headline national SPM figures.
+- **Structural break at 2017→2018:** Adequacy ratio levels are broadly comparable across the break (same SPM variable definitions, same threshold methodology), but the surveys have different income underreporting characteristics and sampling frames. Any trend crossing this break should be interpreted with caution.
+- **IPUMS CPS as alternative:** IPUMS CPS carries harmonized CPS ASEC SPM variables back to income year 2010, which would provide a fully consistent survey methodology across the entire 2010–2024 range. This is the preferred path for extending the series if access is obtained.
