@@ -1,6 +1,10 @@
 # SPM Adequacy Ratio: Methodology, Reflections, and Caveats
 
-**Analysis goal:** For each income year 2018–2024, compute the exact weighted 20th, 50th, and 80th percentile of the SPM adequacy ratio distribution (SPM_Resources / SPM_PovThreshold) to serve as a forecasting anchor for assessing AI-era changes in living standards through 2030 and 2035.
+## Summary
+
+For each income year 2018–2024, load the Census CPS ASEC public-use person file. Filter to one row per SPM family unit (`SPM_HEAD == 1`). Compute each unit's adequacy ratio (`SPM_Resources / SPM_PovThreshold`), where `SPM_Resources` is post-tax, post-transfer, post-expense comprehensive family resources and `SPM_PovThreshold` is the unit's BLS-derived poverty threshold adjusted for family size and local housing costs. Sort units by adequacy ratio ascending and compute the exact weighted 20th, 50th, and 80th percentile using `SPM_Weight` as the unit weight. The result is three annual figures — P20, P50, P80 — each expressing how well a family at that position in the national well-being distribution covers its own needs, where 1.0 = exactly at the poverty line.
+
+A full overview of methodology, data sources, limitations, and forward-looking considerations follows below.
 
 **Coverage note:** The active series uses CPS ASEC microdata only (income years 2018–2024), which ensures a consistent survey methodology across all years. ACS-based SPM research extracts exist for 2010–2017 and the full pipeline for those years is preserved in `03_batch_run.R` and `05_summary_stats.R` (set `YEARS_TO_RUN <- 2010:2024` to re-enable), but they are excluded from published outputs due to the ACS/CPS ASEC structural break. IPUMS CPS may provide consistent CPS ASEC-based SPM data back to 2010 and is a candidate for future extension.
 
