@@ -1,0 +1,22 @@
+ref_year,percentile,adequacy_ratio,n_units,note
+2018,20,1.1811,71517,""
+2018,50,2.3499,71517,""
+2018,80,4.3322,71517,""
+2019,20,1.2262,63092,Pre-COVID baseline
+2019,50,2.4815,63092,Pre-COVID baseline
+2019,80,4.5791,63092,Pre-COVID baseline
+2020,20,1.3597,65620,COVID field limitations (telephone-only)
+2020,50,2.5793,65620,COVID field limitations (telephone-only)
+2020,80,4.619,65620,COVID field limitations (telephone-only)
+2021,20,1.3808,61622,"ARPA policy spike (CTC, stimulus, enhanced UI)"
+2021,50,2.5774,61622,"ARPA policy spike (CTC, stimulus, enhanced UI)"
+2021,80,4.6173,61622,"ARPA policy spike (CTC, stimulus, enhanced UI)"
+2022,20,1.1899,59181,""
+2022,50,2.3591,59181,""
+2022,80,4.2673,59181,""
+2023,20,1.1732,58711,""
+2023,50,2.3555,58711,""
+2023,80,4.3198,58711,""
+2024,20,1.1628,58147,""
+2024,50,2.3442,58147,""
+2024,80,4.3312,58147,""

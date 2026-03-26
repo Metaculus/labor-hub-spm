@@ -1,0 +1,23 @@
+# Raw data files — large Census downloads, not tracked in git
+/data/
+single_year/data/*.csv
+single_year/data/*.zip
+
+# Legacy output folder (superseded by results/)
+output/
+
+# Development and diagnostic scripts
+archive/
+
+# Run logs
+results/logs/
+
+# R session artifacts
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# OS files
+.DS_Store
+Thumbs.db
