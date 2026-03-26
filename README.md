@@ -125,6 +125,6 @@ Run all scripts from the **project root** directory. The first run will download
 - **P50** tracks the median family. Reflects middle-class wage growth, healthcare costs, and tax policy.
 - **P80** tracks the upper-middle range. More sensitive to high-skill wages and capital income.
 
-The **2021 spike** (P20: 1.38, P50: 2.58) reflects ARPA one-time policies (expanded Child Tax Credit, stimulus payments, enhanced unemployment insurance) and is not a structural improvement. **2019 and 2023** are the recommended baseline years for forecasting.
+The **2021 spike** (P20: 1.38, P50: 2.58) reflects ARPA one-time policies (expanded Child Tax Credit, stimulus payments, enhanced unemployment insurance) and is not a structural improvement.
 
 For methodology, limitations, and forward-looking considerations for 2030–2035, see [methodology.md](methodology.md).
